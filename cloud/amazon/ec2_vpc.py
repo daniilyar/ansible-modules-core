@@ -498,15 +498,23 @@ def create_vpc(module, vpc_conn):
     returned_subnets = []
     current_subnets = vpc_conn.get_all_subnets(filters={ 'vpc_id': vpc.id })
 
-    for sn in current_subnets:
-        returned_subnets.append({
-            'resource_tags': dict((t.name, t.value) for t in vpc_conn.get_all_tags(filters={'resource-id': sn.id})),
-            'cidr': sn.cidr_block,
-            'az': sn.availability_zone,
-            'id': sn.id,
-        })
+    if subnets is not None:
+        for subnet in subnets:
+            sn = get_subnet_by_cidr(current_subnets, subnet['cidr'])
+            if sn is not None:
+                returned_subnets.append({
+                'resource_tags': dict((t.name, t.value) for t in vpc_conn.get_all_tags(filters={'resource-id': sn.id})),
+                'cidr': sn.cidr_block,
+                'az': sn.availability_zone,
+                'id': sn.id,
+            })
 
     return (vpc_dict, created_vpc_id, returned_subnets, changed)
+
+def get_subnet_by_cidr(ec2_subnets, cidr):
+    for sn in ec2_subnets:
+        if sn.cidr_block == cidr: return sn
+    return None
 
 def terminate_vpc(module, vpc_conn, vpc_id=None, cidr=None):
     """
